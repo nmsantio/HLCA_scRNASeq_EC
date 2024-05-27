@@ -1,0 +1,334 @@
+# libraries
+library(Seurat)
+library(dplyr)
+library(RColorBrewer) 
+library(heatmaply) 
+library(ggplot2)
+library(SeuratObject)
+library(patchwork)
+library(limma)
+
+
+# ------------------- BANOVICH KROPSKI - TRAVAGLINI KRASNOW DATA SETS FROM HLCA   -------------------------------
+
+# hlca https://hlca.ds.czbiohub.org/
+View(travaglini_banovich_EC_input@meta.data)
+table(travaglini_banovich_EC_input@meta.data$org.sample)
+#F00409     F01157     F01365     F01366     F01367     F01394     F01403     F01483     F01494     F01495     F01506     F01508     F01511     F01513     F01607     F01639     F01641     F01692     F01851     F01853 
+#193         82        300        349        192         44         42         68         45         12          1         41         27         13        160        363         72         34        695        796 
+#F01874     F02092     F02509     F02522     F02524     F02526     F02528     F02607     F02609     F02611     F02613     F02617     F02730     F02992     F03045    VUHD101     VUHD66     VUHD67     VUHD68     VUHD70 
+#66         79         10       1012       1671        412       1677       2177         15        599          8       1965         35         26         28        264        282        623       1982       1035 
+#distal 1a   distal 2   distal 3   medial 2 proximal 3 
+#1495       8449       3009       3278        375 
+
+table(travaglini_banovich_EC_input@meta.data$org.ann.lev1)
+# Endothelial 34101 
+
+table(travaglini_banovich_EC_input@meta.data$org.ann.lev3)
+#EC arterial                 EC capillary                    EC venous                   Lymphatic EC differentiating          Lymphatic EC mature   Lymphatic EC proliferating 
+#5623                        20356                           5263                          136                         2705                           18 
+
+table(travaglini_banovich_EC_input@meta.data$org.ann.lev4)
+#EC aerocyte capillary  EC general capillary    EC venous pulmonary    EC venous systemic                  None (Artery & LEC)
+# 6797                   13559                  4265                   998                                 8482 
+
+table(travaglini_banovich_EC_input@meta.data$org.tissue_level_2)
+#distal lobular airways        parenchyma lower lobe        parenchyma right middle lobe        parenchyma upper lobe            segmental bronchi 
+#3278                          3920                         8449                                5461                             375 
+
+table(travaglini_banovich_EC_input@meta.data$org.scanvi_label)
+#AT1                AT2        Arterial EC             Bronchial Vessel 1   Bronchial Vessel 2          Capillary              Dendritic cells Fibroblast lineage       Lymphatic EC        Macrophages         Mast cells 
+#3                  5               5470                454                234                           20310                  1                 31                     2834                 12                  1 
+#Monocytes          Secretory      Smooth Muscle     T cell lineage             Venous          unlabeled 
+#10                  3                 18                  1                    4590                124 
+
+table(travaglini_banovich_EC_input@meta.data$old.org.ann)
+#AT1                AT2             Bronchial Vessel 1  Bronchial Vessel 2    Dendritic cells        EC arterial       EC capillary          EC venous        Fibroblasts        Macrophages         Mast cells 
+#3                  5                454                234                    1                      5470              20310                 4590                 21                 12                  1 
+#Monocytes     Myofibroblasts               None          Secretory     T cell lineage 
+#10                 10                      2976                  3                  1 
+
+table(travaglini_banovich_EC_input@meta.data$org.tissue)
+#respiratory airway    lung parenchyma 
+#3653              30448 
+
+table(travaglini_banovich_EC_input@meta.data$datset)
+# Banovich_Kropski_2020          Krasnow_2020 
+# 17495                          16606 
+
+table(travaglini_banovich_EC_input@meta.data$IDs)
+#donor_1 donor_2 donor_3 THD0001 THD0005 THD0006 THD0007 THD0008 THD0009 THD0010 THD0012 THD0014 THD0015 THD0017 THD0019 THD0020 VUHD071 VUHD072 VUHD073 VUHD076 VUHD077 VUHD078 VUHD080 VUHD101 VUHD103 VUHD104 VUHD105 VUHD106 
+#1495   11727    3384      82     841      42     160     363      72      34      66      79      10      35      26      28      44      68      57       1      41      27      13     264    1965    2177      15     599 
+#VUHD107  VUHD66  VUHD67  VUHD68  VUHD69  VUHD70  VUHD84  VUHD85  VUHD92  VUHD94  VUHD95  VUHD98 
+#8     282     623    1982     193    1035     695     796     412    1671    1012    1677 
+
+# add data for quality check
+Sobj = PercentageFeatureSet(travaglini_banovich_EC_input, pattern = "^RP[SL]", col.name = "percent.rb")
+Sobj = PercentageFeatureSet(Sobj, pattern = "^MT-", col.name = "percent.mt")
+
+#subset based on mt percent
+Sobj  = subset(Sobj, subset = percent.mt < 20)
+
+##-----------------------------add sampleID ----------------------
+library(tidyverse)
+
+#add sampleID
+temp = Sobj@meta.data
+temp = temp %>%
+mutate(sampleID = case_when(IDs %in%  c("donor_1") ~ "Trav1",
+                              IDs %in%  c("donor_2") ~ "Trav2",
+                              IDs %in%  c("donor_3") ~ "Trav3",
+                              IDs %in%  c("THD0001", "THD0005","THD0006", "THD0007", "THD0008", "THD0009", "THD0010", "THD0012", "THD0014", "THD0015", "THD0017", "THD0019", "THD0020",
+                                          "VUHD071", "VUHD072", "VUHD073", "VUHD076", "VUHD077", "VUHD078","VUHD080", "VUHD101", "VUHD103", "VUHD104", "VUHD105", "VUHD106", "VUHD107",
+                                          "VUHD66",  "VUHD67", "VUHD69", "VUHD70", "VUHD84", "VUHD85", "VUHD92", "VUHD94", "VUHD95", "VUHD98") ~ "Banov"))
+all(row.names(temp) == colnames(Sobj)) #TRUE
+Sobj = AddMetaData(Sobj, metadata = temp$sampleID, col.name = "sampleID")
+table(Sobj@meta.data$sampleID)
+
+#full data
+#Banov Trav1 Trav2 Trav3 
+#15513  1495 11727  3384 
+
+#mt 20
+#Banov Trav1 Trav2 Trav3 
+#15452  1490 11686  3380 
+
+tiff("violin_originaldata.tiff", units="in", width=20, height=10, res=400)
+VlnPlot(Sobj, features = c("nCount_RNA" ,"nFeature_RNA", "percent.mt", "percent.rb"), pt.size = 0)
+dev.off()
+
+View(Sobj@meta.data)
+
+#subset based on sampleID
+HumanSubset = subset(Sobj, sampleID %in% c("Trav1", "Trav2", "Trav3", "Banov"))
+
+#save
+saveRDS(HumanSubset, file = "HumanSubset.rds")
+
+# get RNA data for downstream analysis
+rdata = GetAssayData(object = HumanSubset, assay = "RNA", slot = "counts")
+rdata = CreateSeuratObject(counts = rdata, 
+                           project = "TravagliniBanovich", min.cells = 3, min.features = 300)
+
+# keep information from metadatatable
+temp = HumanSubset@meta.data
+all(colnames(rdata) == row.names(temp)) # [1] TRUE
+
+# select the data
+rdata = AddMetaData(rdata, temp$datset, col.name = "datset")
+rdata = AddMetaData(rdata, temp$org.sample, col.name = "org.sample")
+rdata = AddMetaData(rdata, temp$org.ann.lev1, col.name = "org.ann.lev1")
+rdata = AddMetaData(rdata, temp$org.ann.lev3, col.name = "org.ann.lev3")
+rdata = AddMetaData(rdata, temp$org.ann.lev4, col.name = "org.ann.lev4")
+rdata = AddMetaData(rdata, temp$old.org.ann, col.name = "old.org.ann")
+rdata = AddMetaData(rdata, temp$old.org.ann2, col.name = "old.org.ann2")
+rdata = AddMetaData(rdata, temp$org.scanvi_label, col.name = "org.scanvi_label")
+rdata = AddMetaData(rdata, temp$org.tissue, col.name = "org.tissue")
+rdata = AddMetaData(rdata, temp$org.cell_type, col.name = "org.cell_type")
+rdata = AddMetaData(rdata, temp$IDs, col.name = "IDs")
+rdata = AddMetaData(rdata, temp$percent.mt, col.name = "percent.mt")
+rdata = AddMetaData(rdata, temp$percent.rb, col.name = "percent.rb")
+rdata = AddMetaData(rdata, temp$sampleID, col.name = "sampleID")
+
+rdata[["RNA"]] = split(rdata[["RNA"]], f = rdata$sampleID)
+options(future.globals.maxSize = 3e+09)
+Sobj5 = SCTransform(rdata)
+Sobj5 = RunPCA(Sobj5, npcs = 50, verbose = F)
+
+ pdf("med.elbowplots_S5.pdf")
+ ElbowPlot(Sobj5, ndims = 50)
+ dev.off()
+
+#save data for integration
+saveRDS(Sobj5, file = "Sobj5_forhuman_integration.rds")
+
+#integrate data
+integrateddata = IntegrateLayers(object = Sobj5,  method = RPCAIntegration,  normalization.method = "SCT",  verbose = T)
+clustereddata = FindNeighbors(integrateddata, reduction = "integrated.dr", dims = 1:25)
+clustered = FindClusters(clustereddata, resolution = 0.45)
+UMAP = RunUMAP(clustered, reduction = "integrated.dr", dims = 1:25)
+
+# Visualization
+DefaultAssay(UMAP) = "SCT"
+UMAPPlot(UMAP, label = T, pt.size = 0.1, group.by = "old.org.ann")
+UMAPPlot(UMAP, label = T, pt.size = 0.1)
+DotPlot(UMAP, features = (h_all)) + RotatedAxis() + scale_colour_gradient2(low = "#0000FF", mid = "#FFFFFF", high = "#FF0000")
+VlnPlot(UMAP, features = c("nCount_RNA", "nFeature_RNA","percent.mt", "percent.rb"), pt.size = 0)
+
+#save
+saveRDS(UMAP, file = "Human_EC_res045_PC25.rds")
+
+# markers for mouse
+h_all = c("PECAM1", "CDH5", "TEK",                     # ENDOTHELIAL
+          "MGP","IGFBP3","PLAT","FBLN2",               # ARTERY          
+          "FCN3", "EDN1","IL7R", "CD93", "PTPRB",      # GCAP
+          "S100A3", "S100A4", "MTSS1", 
+          "HLA-DRB1", "HLA-DRB11", "SERPINE1",         # intermediate cap
+          "TMSB4X", "SLC9A3R2", "TMSB10", "PTMA", "KTN1",
+          "EDNRB", "HPGD", "SOSTDC1","CA4", "APLN",    # ACAP          
+          "CCL21","TFF3", "MMRN1","PROX1", "PDPN",     # LEC
+          "ACKR1", "CLU", "CPE","SLC6A2", "AMIGO2",    # PULMONARY VENOUS  
+          "COL15A1","VWA1",                            # SYSTEMIC VENOUS 
+          "PIM3", "INHBB", "BCL3", "OSMR",             # CREC
+          "ISG15", "IFIT3",                            # HIFN
+          "MUC1", "EPCAM",                             # EPITHELIAL
+          "PDGFA",  "PALLD"   ,                        # FIBROBLAST 
+          "PDGFRB", "ITGA8",                           # PERICYTES
+          "CD68", "ITGAX", "S100A8", "CCR7", "CD28",   # MACROPH, NEUTROPH, B AND T CELLS
+          "PTPRC",  
+          "ITGA2B")                                    # PLATELETS
+          
+
+names_HLCA_EC = RenameIdents((UMAP),
+                            `1` = "Artery",
+                            `0` = "gCap", 
+                            `9` = "gCap", 
+                            `7` = "int_gCap",
+                            `5` = "crEC",
+                            `6` = "int_aCap", 
+                            `2` = "aCap",
+                            `4` = "LEC",
+                            `3` = "VeinP",
+                            `10` = "VeinS",
+                            `8` = "nonEC",
+                            `11` = "high_mito")  
+
+
+
+#--------------------------FINALIZE HUMAN DATA --------------------------------
+
+#subset only good aquality ECs
+Human_EC = subset(names_HLCA_EC, idents = c("Artery", "gCap", "int_gCap", "crEC", "int_aCap",  "aCap", "LEC", "VeinP", "VeinS"))
+
+library(tidyverse)
+
+temp = Human_EC@meta.data
+temp = temp %>%
+  mutate(treatment = case_when(sampleID %in%  c("Trav1") ~ "Adj.NormH",
+                               sampleID %in%  c("Trav2") ~ "Adj.NormH",
+                               sampleID %in%  c("Trav3") ~ "Adj.NormH",
+                               sampleID %in%  c("Banov") ~ "HealthyH"))
+all(row.names(temp) == colnames(Human_EC)) #TRUE
+Human_EC = AddMetaData(Human_EC, metadata = temp$treatment, col.name = "treatment")
+table(Human_EC@meta.data$treatment)
+
+#Adj.NormH  HealthyH 
+#16328     14541 
+
+#remove old.org.ann non-EC
+HumanEC_Subset = subset(Human_EC, old.org.ann %in% c("Bronchial Vessel 1","Bronchial Vessel 2", "EC arterial","EC capillary", "EC venous", "None"))
+table(HumanEC_Subset@meta.data$treatment)
+
+#Adj.NormH  HealthyH 
+#16324     14494
+
+hLung = AddMetaData(HumanEC_Subset , Idents(HumanEC_Subset), col.name = "cell_type")
+table(hLung@meta.data$treatment)
+table(hLung@meta.data$cell_type)
+
+#save
+saveRDS(hLung, file = "HumanEC_SubsetClean.rds")
+
+
+#------------------recluster human data alone ----------------------------------
+
+#get RNA data
+HumanEC_SubsetClean[["RNA"]] = JoinLayers(HumanEC_SubsetClean[["RNA"]])
+rdata = GetAssayData(HumanEC_SubsetClean, assay = "RNA", layer = "counts")
+rdata = CreateSeuratObject(counts = rdata)
+
+# keep information from metadatatable
+temp = HumanEC_SubsetClean@meta.data
+all(colnames(rdata) == row.names(temp)) # [1] TRUE
+
+View(HumanEC_SubsetClean@meta.data)
+
+# select the data
+rdata = AddMetaData(rdata, temp$datset, col.name = "datset")
+rdata = AddMetaData(rdata, temp$org.sample, col.name = "org.sample")
+rdata = AddMetaData(rdata, temp$org.ann.lev1, col.name = "org.ann.lev1")
+rdata = AddMetaData(rdata, temp$org.ann.lev3, col.name = "org.ann.lev3")
+rdata = AddMetaData(rdata, temp$org.ann.lev4, col.name = "org.ann.lev4")
+rdata = AddMetaData(rdata, temp$old.org.ann, col.name = "old.org.ann")
+rdata = AddMetaData(rdata, temp$old.org.ann2, col.name = "old.org.ann2")
+rdata = AddMetaData(rdata, temp$org.scanvi_label, col.name = "org.scanvi_label")
+rdata = AddMetaData(rdata, temp$org.tissue, col.name = "org.tissue")
+rdata = AddMetaData(rdata, temp$org.cell_type, col.name = "org.cell_type")
+rdata = AddMetaData(rdata, temp$IDs, col.name = "IDs")
+rdata = AddMetaData(rdata, temp$percent.mt, col.name = "percent.mt")
+rdata = AddMetaData(rdata, temp$percent.rb, col.name = "percent.rb")
+rdata = AddMetaData(rdata, temp$sampleID, col.name = "sampleID")
+rdata = AddMetaData(rdata, temp$treatment, col.name = "treatment")
+rdata = AddMetaData(rdata, temp$cell_type, col.name = "firstannotation")
+
+#SCT and PCA
+rdata[["RNA"]] = split(rdata[["RNA"]], f = rdata$sampleID)
+options(future.globals.maxSize = 3e+09)
+Sobj5 = SCTransform(rdata)
+Sobj5 = RunPCA(Sobj5, npcs = 50, verbose = F)
+
+#check dims
+pdf("med.elbowplots_S5.pdf")
+ElbowPlot(Sobj5, ndims = 50)
+dev.off()
+
+#save
+saveRDS(Sobj5, file = "Sobj5_forhuman_integration.rds")
+
+#integrate
+integrateddata = IntegrateLayers(object = Sobj5,  method = RPCAIntegration,  normalization.method = "SCT",  verbose = T)
+clustereddata = FindNeighbors(integrateddata, reduction = "integrated.dr", dims = 1:25)
+clustered = FindClusters(clustereddata, resolution = 0.33)
+UMAP = RunUMAP(clustered, reduction = "integrated.dr", dims = 1:25)
+
+
+# Visualization
+UMAPPlot(UMAP, label = F, pt.size = 0.1)
+DotPlot(UMAP, features = (manumarkers)) + RotatedAxis() + scale_colour_gradient2(low = "#0000FF", mid = "#FFFFFF", high = "#FF0000")
+
+manumarkers = c("IGFBP3","GJA5","BMX",                       # ARTERY          
+                "EDN1", "CD93", "PTPRB",                     # GCAP
+                "PTMA", "SPTBN1",  "KTN1",                   # iGCAP
+                "ICAM1", "OSMR","BCL3", "PIM3",              # CREC
+                "HLA-DRB1", "SERPINE1", "S100A3",            # iACAP
+                "EDNRB", "CA4", "APLN",                      # ACAP          
+                "CCL21","TFF3", "MMRN1",                     # LEC
+                "CPE","ACKR1", "CLU",                        # PULMONARY VENOUS  
+                "COL15A1","VWA1","SPARCL1")                  # SYSTEMIC VENOUS 
+
+#rename
+names_res033_PC25 = RenameIdents((UMAP),
+                                 `2` = "Artery",
+                                 `0` = "gCap", 
+                                 `6` = "igCap",
+                                 `5` = "crEC",
+                                 `7` = "iaCap", 
+                                 `1` = "aCap",
+                                 `4` = "LEC",
+                                 `3` = "VeinP",
+                                 `8` = "VeinS") 
+#save
+saveRDS(names_res033_PC25, file = "names_res033_PC25.rds")
+
+
+# Visualization of clusters
+tiff("Clusters_UMAP.tiff", units="in", width=8, height=3.5, res=500)
+UMAPPlot(names_res033_PC25, label = F, pt.size = 0.1, split.by = "treatment", cols =c('Artery'='#F8766D','gCap'='#00C094','igCap'='#96E6D3','crEC'='#00b4eb', 'aCap'='#53B400','iaCap'='#396D0E', 
+                                                 'LEC'='#A58AFF','VeinP'='#FB61D7', 'VeinS'='#9B1F7E'))
+dev.off()
+
+#visualization of markers
+DefaultAssay(names_res033_PC25) = "SCT"
+tiff("Markers_manumarkers.tiff", units="in", width=8, height=4, res=300)
+DotPlot(names_res033_PC25, features = (manumarkers)) + RotatedAxis() + 
+  scale_colour_gradient2(low = "#0000FF", mid = "#FFFFFF", high = "#FF0000")
+dev.off()
+
+#find human EC markers
+DefaultAssay(names_res033_PC25) = "SCT"
+ClusterMarkersPrep = PrepSCTFindMarkers(names_res033_PC25, assay = "SCT", verbose = TRUE)
+ClusterMarkers = FindAllMarkers(ClusterMarkersPrep, assay = "SCT", 
+                                recorrect_umi = FALSE, 
+                                verbose = FALSE, 
+                                only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.1)
+write.table(ClusterMarkers, "MarkerHuman_FC01_minPCT01.txt", sep="\t", row.names=TRUE, col.names=TRUE, quote= F)
