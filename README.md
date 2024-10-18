@@ -3,14 +3,19 @@ SYSTEM REQUIREMENTS
 Windows Operating system 
 
 Computer with minimum: 
+
 -64 Gt RAM
+
 -CPU with 8 cores or more
+
 - 1 Tb of hard disk space
 
 1: Install R (Version: 4.4.1) 
+
 2: Install RStudio (Version: 2024.04.2+764)
 
 Install the following R packages:
+
 BiocNeighbors	https://www.bioconductor.org/packages/release/bioc/html/BiocNeighbors.html 
 
 CellChat	http://www.cellchat.org/  
@@ -76,6 +81,7 @@ viridis		https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viri
 INSTALLATION QUIDE
 
 https://posit.co/download/rstudio-desktop/
+
 estimated install time: 30 min - 1 h
 
 See links above for R package installation.
@@ -83,14 +89,21 @@ See links above for R package installation.
 INSTRUCTIONS FOR USE
 
 DATA 3. Human lung EC data from
+
 https://hlca.ds.czbiohub.org/
 
 Download data:
+
 https://www.synapse.org/Synapse:syn21041850/wiki/600865
 
-Follow code at: https://github.com/nmsantio/HLCA_scRNASeq_EC
+Follow code at: 
+
+https://github.com/nmsantio/HLCA_scRNASeq_EC
+
 human EC clustering
 
 Additional visualization instructions can be found from the above mentioned links, mainly at
+
 https://satijalab.org/seurat/
+
 https://samuel-marsh.github.io/scCustomize/index.html
