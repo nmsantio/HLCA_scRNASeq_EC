@@ -58,15 +58,8 @@ https://hlca.ds.czbiohub.org/
 Download data:
 https://www.synapse.org/Synapse:syn21041850/wiki/600865
 
-4. Integrate human data from DATA 3. with mouse data from DATA 1.
-
-Follow code at:
-https://github.com/nmsantio/Integration-of-mouse-and-human-scRNASeq-data
-
-Open both datasets created from DATA 3 and DATA 1 in R. 
-Step 1. Downsampling - Replace filename with mouse data file name
-Step 2. Mouse gene names to human
-Step 3. Data integration - Check that the human data file has name hLung, if not, replace hLung with the datafile name
+Follow code at: https://github.com/nmsantio/HLCA_scRNASeq_EC
+human EC clustering
 
 Additional visualization instructions can be found from the above mentioned links, mainly at
 https://satijalab.org/seurat/
